@@ -1,0 +1,173 @@
+/*            DBMS MINI PROJECT  ---  HOSPITAL MANAGEMENT SYSTEM            */
+
+
+/* DCL COMMANDS -- CREATE USER AND GRANT */
+
+/* creation of user */
+create user "admin"@"localhost" identified by "";
+
+/* grant all privileges to user */
+grant all on *.* to "admin"@"localhost"; 
+
+
+/*  DDL AND DML COMMANDS -- CREATE TABLE , INSERT , DELETE , UPDATE ,SEARCH , SELECT  */
+
+/* database creation */
+create database project;
+
+/* table for storing username and password of admin for login*/
+create table admin
+(username varchar(50),
+password varchar(50));
+
+/* adding primary keys */
+ALTER TABLE `admin` ADD PRIMARY KEY( `username`, `password`);
+
+/* insert data into admin */
+INSERT INTO `admin`(`username`, `password`) VALUES ("hms","admin");
+
+
+/* table for storing username and password of doctors for login*/
+create table doctor_login
+(username varchar(50) not null,
+ password varchar(50) not null,
+ primary key(username,password));
+
+/* username and password for doctor */
+insert into doctor_login values 
+("doc1","doc1"),
+("doc2","doc2"),
+("doc3","doc3"),
+("doc4","doc4"),
+("doc5","doc5"),
+("doc6","doc6"),
+("doc7","doc7"),
+("doc8","doc8"),
+("doc9","doc9"),
+("doc10","doc10");
+ 
+SELECT * FROM `doctor_login` ;
+
+/* hospital table contains different branches of hospital */
+create table hospital
+(hosp_id varchar(5) primary key,
+ hosp_name varchar(100),
+ contact_no varchar(11),
+ city varchar(20),
+ state varchar(20));
+
+insert into hospital values 
+('H100','Fortis Healthcare','9012345671','Noida','Delhi'),
+('H101','Fortis Multispeciality Clinic','9012345129','Nagarbhavi','Karnataka'),
+('H102','Fortis Medical Hospital','9012314555','Kalyan','Maharashtra');
+
+SELECT * FROM `hospital`;
+
+/* patient entry in patient table*/
+create table patient
+(patientID varchar(10) primary key,
+ name varchar(100) not null,
+ contactNumber varchar(10),
+ gender varchar(10),
+ age int,
+ bloodGroup varchar(4),
+ address varchar(100),
+ anyMajorDisease varchar(500) default null);
+
+alter table `patient` modify age varchar(5) check(age>0);
+
+/*doctor table*/
+create table doctor
+(doc_id integer primary key,
+ doc_name varchar(100) not null,
+ specialization varchar(30) not null ,
+ contact varchar(10) ,
+ address varchar(100),
+ email varchar(30));
+
+insert into doctor values 
+(1,"Akash","ortho","891234516","UP","asd@gmail.com"),
+(2,"Abc","gynae","12345678","UP","qwerty@gmail.com");
+
+SELECT * FROM doctor;
+
+/*medicine table */
+create table medicine
+(med_name varchar(100) primary key,
+price integer);
+
+/* medicine names*/
+insert into medicine values 
+("abc",800),
+("xyz",900),
+("pqr",1000);
+
+/* patient diagnosis information */
+create table patientreport 
+(patientID varchar(10),
+ symptoms varchar(200) not null,
+ diagnosis varchar(200) not null,
+ medicines varchar(200),
+ doc_id integer,
+ wardReq varchar(5),
+ typeWard varchar(10),
+ no_of_days integer,
+ foreign key(patientID) references patient(patientID),
+ foreign key(doc_id) references doctor(doc_id),
+ foreign key(medicines) references medicine(med_name));
+
+
+/*ward details*/
+create table wards
+(ward_id integer primary key auto_increment,
+ patientID varchar(10),
+ type_Ward varchar(20) not null,
+ no_of_days integer,
+ rate int,
+ foreign key(patientID) references patient(patientID)
+ on delete cascade);
+
+
+/* Joins to show full history of the patient  */
+
+select * from patient as p,patientreport as pr where p.patientID=pr.patientID;
+
+
+/*   PL/SQL COMMANDS   */
+
+/* Trigger which automatically makes an entry in wards table after patient diagnosis */
+
+delimiter $
+create trigger after_insert_in_patientreport
+after insert on patientreport
+for each row 
+BEGIN
+if new.wardReq="yes" THEN
+if new.typeWard="General" THEN
+insert into wards(patientID,type_Ward,no_of_days,rate) 
+values (new.patientID,new.typeWard,new.no_of_days,5000);
+elseif new.typeWard="Single" THEN
+insert into wards(patientID,type_Ward,no_of_days,rate)
+values (new.patientID,new.typeWard,new.no_of_days,8000);
+elseif new.typeWard="Duo" THEN
+insert into wards(patientID,type_Ward,no_of_days,rate)
+values (new.patientID,new.typeWard,new.no_of_days,10000);
+end if;
+end if;
+end $
+
+/* Procedure is used to calculate the bill of a patient */
+
+delimiter $
+CREATE PROCEDURE `bill_pay`(IN `pid` VARCHAR(10), OUT `nm` VARCHAR(100), OUT `ag` INT, OUT `gen` VARCHAR(10), 
+OUT `addr` VARCHAR(100), OUT `wt` VARCHAR(20), OUT `wc` INT, OUT `mc` INT, OUT `cost` INT) 
+BEGIN 
+select name into nm from patient where patientID=pid; 
+select age into ag from patient where patientID=pid; 
+select gender into gen from patient where patientID=pid; 
+select address into addr from patient where patientID=pid; 
+select type_Ward into wt from wards where patientID=pid; 
+select (rate*no_of_days) into wc from wards where patientID=pid; 
+select price into mc from medicine where med_name in (select medicines1 from patientreport1 where patientID=pid); 
+select coalesce((mc + wc),mc,wc,0) into cost; 
+END $
